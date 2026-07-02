@@ -39,9 +39,11 @@ impl LendingPool {
             panic!("already initialized");
         }
         env.storage().instance().set(&DataKey::Token, &token);
+        bump_instance_ttl(&env);
         env.storage()
             .persistent()
             .set(&DataKey::TotalDeposits, &(0i128));
+        bump_deposit_ttl(&env, &DataKey::TotalDeposits);
     }
 
     pub fn deposit(env: Env, provider: Address, amount: i128) {
@@ -60,6 +62,7 @@ impl LendingPool {
         let mut current_balance: i128 = env.storage().persistent().get(&key).unwrap_or(0);
         current_balance += amount;
         env.storage().persistent().set(&key, &current_balance);
+        bump_deposit_ttl(&env, &key);
         let mut total_deposits: i128 = env
             .storage()
             .persistent()
@@ -69,6 +72,7 @@ impl LendingPool {
         env.storage()
             .persistent()
             .set(&DataKey::TotalDeposits, &total_deposits);
+        bump_deposit_ttl(&env, &DataKey::TotalDeposits);
         env.events()
             .publish((symbol_short!("Deposit"), provider), amount);
     }
@@ -107,6 +111,8 @@ impl LendingPool {
         env.storage()
             .persistent()
             .set(&DataKey::TotalDeposits, &total_deposits);
+        bump_deposit_ttl(&env, &DataKey::TotalDeposits);
+        bump_deposit_ttl(&env, &key);
         // Interaction: transfer tokens only after state is updated
         let token: Address = env
             .storage()
